@@ -1,0 +1,138 @@
+import { SlashCommandBuilder } from 'discord.js';
+import * as logger from '../../utils/logger.js';
+
+export default {
+  data: new SlashCommandBuilder()
+    .setName('members')
+    .setDescription('Display member statistics'),
+
+  name: 'members', // Add this line to match legacy command name
+  aliases: ['membercount', 'memberinfo'],
+
+  async execute(interaction) {
+    const guild = interaction.guild;
+    const now = Date.now();
+    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    try {
+      const members = await guild.members.fetch();
+      const totalMembers = members.size;
+      const botCount = members.filter(member => member.user.bot).size;
+      const humanCount = totalMembers - botCount;
+
+      // Count members who joined within time periods
+      const dayJoins = members.filter(member => member.joinedTimestamp > oneDayAgo).size;
+      const weekJoins = members.filter(member => member.joinedTimestamp > oneWeekAgo).size;
+      const monthJoins = members.filter(member => member.joinedTimestamp > oneMonthAgo).size;
+
+      const embed = {
+        color: 0x3498DB,
+        author: {
+          name: guild.name,
+          icon_url: guild.iconURL({ dynamic: true })
+        },
+        fields: [
+          {
+            name: '👥 Total Members',
+            value: `${totalMembers}`,
+            inline: true
+          },
+          {
+            name: '👤 Humans',
+            value: `${humanCount}`,
+            inline: true
+          },
+          {
+            name: '🤖 Bots',
+            value: `${botCount}`,
+            inline: true
+          },
+          {
+            name: '📈 Growth',
+            value: `\`${dayJoins >= 100 ? String(dayJoins) : String(dayJoins).padStart(2, '0')}\` members joined in the last day\n` +
+                   `\`${weekJoins >= 100 ? String(weekJoins) : String(weekJoins).padStart(2, '0')}\` members joined in the last week\n` +
+                   `\`${monthJoins >= 100 ? String(monthJoins) : String(monthJoins).padStart(2, '0')}\` members joined in the last month`
+          }
+        ],
+        timestamp: new Date(),
+        footer: {
+          text: `Requested by ${interaction.user.tag}`,
+          icon_url: interaction.user.displayAvatarURL({ dynamic: true })
+        }
+      };
+
+      await interaction.reply({ embeds: [embed] });
+      logger.log(`${interaction.user.tag} used members command in ${guild.name}`);
+    } catch (error) {
+      logger.error(`Error executing members command: ${error}`);
+      await interaction.reply({ 
+        content: 'There was an error while fetching member information!',
+        ephemeral: true 
+      });
+    }
+  },
+
+  async legacyExecute(message, args) {
+    const guild = message.guild;
+    const now = Date.now();
+    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    try {
+      const members = await guild.members.fetch();
+      const totalMembers = members.size;
+      const botCount = members.filter(member => member.user.bot).size;
+      const humanCount = totalMembers - botCount;
+
+      const dayJoins = members.filter(member => member.joinedTimestamp > oneDayAgo).size;
+      const weekJoins = members.filter(member => member.joinedTimestamp > oneWeekAgo).size;
+      const monthJoins = members.filter(member => member.joinedTimestamp > oneMonthAgo).size;
+
+      const embed = {
+        color: 0x3498DB,
+        author: {
+          name: guild.name,
+          icon_url: guild.iconURL({ dynamic: true })
+        },
+        fields: [
+          {
+            name: '👥 Total Members',
+            value: `${totalMembers}`,
+            inline: true
+          },
+          {
+            name: '👤 Humans',
+            value: `${humanCount}`,
+            inline: true
+          },
+          {
+            name: '🤖 Bots',
+            value: `${botCount}`,
+            inline: true
+          },
+          {
+            name: '📈 Growth',
+            value: `\`${dayJoins >= 100 ? String(dayJoins) : String(dayJoins).padStart(2, '0')}\` members joined in the last day\n` +
+                   `\`${weekJoins >= 100 ? String(weekJoins) : String(weekJoins).padStart(2, '0')}\` members joined in the last week\n` +
+                   `\`${monthJoins >= 100 ? String(monthJoins) : String(monthJoins).padStart(2, '0')}\` members joined in the last month`
+          }
+        ],
+        timestamp: new Date(),
+        footer: {
+          text: `Requested by ${message.author.tag}`,
+          icon_url: message.author.displayAvatarURL({ dynamic: true })
+        }
+      };
+
+      // Use message.reply instead of message.channel.send to fix duplicate message issue
+      await message.reply({ embeds: [embed] });
+      logger.log(`${message.author.tag} used legacy members command in ${guild.name}`);
+    } catch (error) {
+      logger.error(`Error executing legacy members command: ${error}`);
+      message.reply('There was an error while fetching member information!');
+    }
+  }
+};
